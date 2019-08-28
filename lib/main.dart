@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:podcast/download_manager.dart';
 import 'package:podcast/model/episode.dart';
-import 'package:podcast/player.dart';
 import 'package:podcast/player_manager.dart';
 import 'package:podcast/podcast.dart';
 import 'package:provider/provider.dart';
@@ -99,17 +98,6 @@ class _MyHomePageState extends State<MyHomePage> {
               child: Text('Podcast'),
               onPressed: () => Navigator.of(context)
                   .push(MaterialPageRoute(builder: (context) => PodcastPage('53dcd8c82e464408bf775de4b8dc3376'))),
-            ),
-            RaisedButton(
-              child: Text('Player'),
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) => PlayerPage(Episode(
-                        id: '61b6550eae9a4384898ecc789fab72c6',
-                        title: 'Ep. 846 - Feelings Don’t Care About Your Facts',
-                        image:
-                            'https://cdn-images-1.listennotes.com/podcasts/the-ben-shapiro-show/ep-846-feelings-dont-care-VayYHnUjRf8-fxVuC89Yk3i.300x300.jpg',
-                        audio: 'https://www.listennotes.com/e/p/61b6550eae9a4384898ecc789fab72c6/',
-                      )))),
             ),
             Text(
               'You have pushed the button this many times:',
