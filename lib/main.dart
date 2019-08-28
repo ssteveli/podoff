@@ -1,8 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:podcast/download_manager.dart';
 import 'package:podcast/model/episode.dart';
 import 'package:podcast/player.dart';
+import 'package:podcast/player_manager.dart';
+import 'package:podcast/podcast.dart';
+import 'package:provider/provider.dart';
 
-void main() => runApp(MyApp());
+void main() => runApp(MultiProvider(providers: [
+      ChangeNotifierProvider<DownloadManager>(
+        builder: (context) => DownloadManager(),
+      ),
+      ChangeNotifierProvider<PlayerManager>(
+        builder: (context) => PlayerManager(),
+      ),
+    ], child: MyApp()));
 
 class MyApp extends StatelessWidget {
   // This widget is the root of your application.
@@ -11,16 +22,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
-        primarySwatch: Colors.brown,
+        brightness: Brightness.dark,
       ),
       home: MyHomePage(title: 'Flutter Demo Home Page'),
     );
@@ -93,6 +95,11 @@ class _MyHomePageState extends State<MyHomePage> {
           // horizontal).
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
+            RaisedButton(
+              child: Text('Podcast'),
+              onPressed: () => Navigator.of(context)
+                  .push(MaterialPageRoute(builder: (context) => PodcastPage('53dcd8c82e464408bf775de4b8dc3376'))),
+            ),
             RaisedButton(
               child: Text('Player'),
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(

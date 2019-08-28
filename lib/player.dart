@@ -1,9 +1,10 @@
 import 'dart:io';
 
 import 'package:audioplayers/audioplayers.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:podcast/model/episode.dart';
+import 'package:path_provider/path_provider.dart';
 
 class PlayerPage extends StatefulWidget {
   final Episode episode;
@@ -16,24 +17,110 @@ class PlayerPage extends StatefulWidget {
 
 class _PlayerPageState extends State<PlayerPage> {
   static AudioPlayer _player = AudioPlayer(mode: PlayerMode.MEDIA_PLAYER);
-  static DefaultCacheManager _cache = DefaultCacheManager();
+  final Dio dio = new Dio();
+  String downloadTaskId;
 
   final Episode episode;
 
   _PlayerPageState(this.episode);
 
   File _file;
+  double _progress;
 
   @override
   void initState() {
     super.initState();
 
-    _cache.getSingleFile(episode.audio).then((file) => setState(() => _file = file));
+    Future.delayed(Duration(milliseconds: 500), () async {
+      Directory directory = await getTemporaryDirectory();
+      File f = File('${directory.path}/${episode.id}');
+
+      if (await f.exists()) {
+        setState(() => _file = f);
+      } else {
+        var response = await dio.download(episode.audio, f.path, onReceiveProgress: (count, total) {
+          print('downloading ${count / total}');
+          if (mounted) setState(() => _progress = count / total);
+        });
+        print('download completed, status code: ${response.statusCode}');
+        print('exists: ${await f.exists()}');
+        print('size: ${await f.length()}');
+
+        if (response.statusCode == 200) {
+          setState(() => _file = f);
+          _player.play(_file.path, isLocal: true);
+        }
+      }
+    });
   }
 
   @override
   void dispose() {
     super.dispose();
+  }
+
+  Widget _downloading() {
+    if (_progress == null) {
+      return Text('Waiting to start');
+    } else {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          Padding(
+            padding: EdgeInsets.only(right: 10.0),
+            child: Text('Downloading'),
+          ),
+          Padding(
+            padding: EdgeInsets.only(top: 20.0),
+            child: CircularProgressIndicator(
+              value: _progress,
+            ),
+          ),
+        ],
+      );
+    }
+  }
+
+  Widget _episode() {
+    return Column(children: [
+      StreamBuilder(
+        stream: _player.onPlayerStateChanged,
+        builder: (context, AsyncSnapshot<AudioPlayerState> snapshot) {
+          if (snapshot.hasData) {
+            return Text(snapshot.data.toString());
+          }
+
+          return Text(_player.state.toString());
+        },
+      ),
+      if (_file != null)
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            StreamBuilder(
+              stream: _player.onAudioPositionChanged,
+              builder: (context, AsyncSnapshot<Duration> snapshot) {
+                if (snapshot.hasData) {
+                  return Text(snapshot.data.inSeconds.toString());
+                }
+
+                return (Text('0'));
+              },
+            ),
+            Text('/'),
+            StreamBuilder(
+              stream: _player.onDurationChanged,
+              builder: (context, AsyncSnapshot<Duration> snapshot) {
+                if (snapshot.hasData) {
+                  return Text(snapshot.data.inSeconds.toString());
+                }
+
+                return (Text('0'));
+              },
+            )
+          ],
+        )
+    ]);
   }
 
   @override
@@ -44,56 +131,13 @@ class _PlayerPageState extends State<PlayerPage> {
       ),
       body: Center(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: <Widget>[
             Image.network(
               episode.image,
-              headers: {'X-ListenAPI-Key': '8c5425ad6ed043838fbddab4ecc7c2e8'},
             ),
             Text(episode.title),
-            if (_file == null) Text('Download ...'),
-            if (_file != null)
-              StreamBuilder(
-                stream: _player.onPlayerStateChanged,
-                builder: (context, AsyncSnapshot<AudioPlayerState> snapshot) {
-                  if (snapshot.hasData) {
-                    return Text(snapshot.data.toString());
-                  }
-
-                  return Text(_player.state.toString());
-                },
-              ),
-            if (_file != null)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  StreamBuilder(
-                    stream: _player.onAudioPositionChanged,
-                    builder: (context, AsyncSnapshot<Duration> snapshot) {
-                      if (snapshot.hasData) {
-                        return Text(snapshot.data.inSeconds.toString());
-                      }
-
-                      return (Text('0'));
-                    },
-                  ),
-                  Text('/'),
-                  StreamBuilder(
-                    stream: _player.onDurationChanged,
-                    builder: (context, AsyncSnapshot<Duration> snapshot) {
-                      if (snapshot.hasData) {
-                        return Text(snapshot.data.inSeconds.toString());
-                      }
-
-                      return (Text('0'));
-                    },
-                  )
-                ],
-              ),
-            RaisedButton(
-              child: Text('Clear Cache'),
-              onPressed: () => _cache.emptyCache(),
-            )
+            _file == null ? _downloading() : _episode(),
           ],
         ),
       ),
