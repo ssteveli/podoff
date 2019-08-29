@@ -35,7 +35,7 @@ class _EpisodePageState extends State<EpisodePage> {
         setState(() => _file = f);
       } else {
         await for (var progress in Provider.of<DownloadManager>(context).download(episode.id, episode.audio)) {
-          setState(() => _progress = progress);
+          if (mounted) setState(() => _progress = progress);
         }
 
         f = await dm.getDownloadedFile(episode.id);
@@ -86,7 +86,7 @@ class _EpisodePageState extends State<EpisodePage> {
                     IconButton(
                       icon: Icon(
                         Icons.replay_10,
-                        color: Colors.white,
+                        color: Colors.white60,
                       ),
                       onPressed: () async {
                         playerManager.jumpBack(Duration(seconds: 10));
@@ -94,6 +94,7 @@ class _EpisodePageState extends State<EpisodePage> {
                     ),
                     FloatingActionButton(
                       backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white70,
                       onPressed: () async {
                         switch (playerManager.state) {
                           case AudioPlayerState.PLAYING:
@@ -114,13 +115,19 @@ class _EpisodePageState extends State<EpisodePage> {
                       child: Icon(playerManager.state == AudioPlayerState.PLAYING ? Icons.pause : Icons.play_arrow),
                     ),
                     IconButton(
-                      icon: Icon(Icons.forward_10),
+                      icon: Icon(
+                        Icons.forward_10,
+                        color: Colors.white60,
+                      ),
                       onPressed: () async {
                         playerManager.jumpAhead(const Duration(seconds: 10));
                       },
                     ),
                     IconButton(
-                      icon: Icon(Icons.forward_30),
+                      icon: Icon(
+                        Icons.forward_30,
+                        color: Colors.white60,
+                      ),
                       onPressed: () async {
                         playerManager.jumpAhead(const Duration(seconds: 30));
                       },
@@ -136,14 +143,21 @@ class _EpisodePageState extends State<EpisodePage> {
                       if (playerManager.duration?.inSeconds != 0)
                         Expanded(
                           child: Padding(
-                            padding: EdgeInsets.only(left: 20.0, right: 20.0),
-                            child: LinearProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                            padding: EdgeInsets.only(left: 5.0, right: 5.0),
+                            child: Slider(
                               value: playerManager.position.inMilliseconds / playerManager.duration.inMilliseconds,
+                              activeColor: Colors.orange,
+                              inactiveColor: Colors.grey,
+                              onChanged: (v) {
+                                var pos = playerManager.duration.inMilliseconds * v;
+                                playerManager.jump(Duration(milliseconds: pos.toInt()));
+                              },
                             ),
                           ),
                         ),
-                      Text(_printDuration(playerManager.duration)),
+                      Text(_printDuration(Duration(
+                          milliseconds:
+                              playerManager.duration.inMilliseconds - playerManager.position.inMilliseconds))),
                     ],
                   ),
                 ),
@@ -184,7 +198,12 @@ class _EpisodePageState extends State<EpisodePage> {
             ),
             Text(
               episode.title,
-              style: Theme.of(context).textTheme.title,
+              style: Theme.of(context).textTheme.subhead,
+              textAlign: TextAlign.center,
+            ),
+            Text(
+              '${episode.publishDateTime.month} / ${episode.publishDateTime.day} / ${episode.publishDateTime.year}',
+              style: Theme.of(context).textTheme.caption,
               textAlign: TextAlign.center,
             ),
             Padding(padding: EdgeInsets.only(top: 20.0), child: _file == null ? _downloading() : _episode()),

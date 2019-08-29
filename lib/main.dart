@@ -94,9 +94,14 @@ class _MyHomePageState extends State<MyHomePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             RaisedButton(
-              child: Text('Podcast'),
+              child: Text('Shapiro'),
               onPressed: () => Navigator.of(context)
                   .push(MaterialPageRoute(builder: (context) => PodcastPage('53dcd8c82e464408bf775de4b8dc3376'))),
+            ),
+            RaisedButton(
+              child: Text('Walsh'),
+              onPressed: () => Navigator.of(context)
+                  .push(MaterialPageRoute(builder: (context) => PodcastPage('7a81cfafff8d4276bbedac83fc00715c'))),
             ),
             Text(
               'You have pushed the button this many times:',

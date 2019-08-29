@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:podcast/db.dart';
 import 'package:podcast/download_manager.dart';
 import 'package:podcast/episode.dart';
 import 'package:podcast/player_manager.dart';
@@ -19,17 +20,18 @@ class PodcastPage extends StatefulWidget {
 }
 
 class _PodcastPageState extends State<PodcastPage> {
-  final String id;
-  final ListenAPI api = ListenAPI();
+  final String podcastId;
+  final ListenAPI _api = ListenAPI();
+  final Db _db = Db();
 
-  _PodcastPageState(this.id);
+  _PodcastPageState(this.podcastId);
 
   final Map<String, Stream<double>> _downloads = {};
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder(
-      future: api.getPodcast(id),
+      future: _api.getPodcast(podcastId),
       builder: (context, AsyncSnapshot<Podcast> snapshot) {
         if (snapshot.hasData) {
           return Scaffold(
@@ -52,40 +54,26 @@ class _PodcastPageState extends State<PodcastPage> {
                     itemBuilder: (context, idx) {
                       Episode episode = snapshot.data.episodes[idx];
                       return ListTile(
-                        title: Text(episode.title),
-                        subtitle: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                        title: Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
                           children: <Widget>[
-                            if (!_downloads.containsKey(episode.id))
-                              IconButton(
-                                  icon: Icon(Icons.file_download),
-                                  onPressed: () async {
-                                    _downloads[episode.id] =
-                                        Provider.of<DownloadManager>(context).download(episode.id, episode.audio);
-                                    setState(() {});
-                                  }),
-                            if (_downloads.containsKey(episode.id))
-                              StreamBuilder(
-                                stream: _downloads[episode.id],
-                                builder: (context, AsyncSnapshot snapshot) {
-                                  if (snapshot.connectionState == ConnectionState.done) {
-                                    return _playerWidget(episode.id);
-                                  }
-
-                                  if (snapshot.hasData) {
-                                    return Row(
-                                      children: <Widget>[
-                                        CircularProgressIndicator(
-                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
-                                          value: snapshot.data,
-                                        )
-                                      ],
-                                    );
-                                  }
-
-                                  return Icon(Icons.access_time);
-                                },
-                              )
+                            Expanded(
+                              child: Text(episode.title),
+                            )
+                          ],
+                        ),
+                        subtitle: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: <Widget>[
+                            Column(
+                              children: <Widget>[
+                                Text(
+                                  '${episode.publishDateTime.month} / ${episode.publishDateTime.day} / ${episode.publishDateTime.year}',
+                                  style: Theme.of(context).textTheme.caption,
+                                ),
+                              ],
+                            ),
+                            _determineControlWidget(episode),
                           ],
                         ),
                         onTap: () =>
@@ -103,55 +91,115 @@ class _PodcastPageState extends State<PodcastPage> {
     );
   }
 
-  Widget _playerWidget(String id) {
-    return Consumer<PlayerManager>(
-      builder: (context, playerManager, _) {
-        if (playerManager.currentId == id) {
-          switch (playerManager.state) {
-            case AudioPlayerState.COMPLETED:
-            case AudioPlayerState.PAUSED:
-            case AudioPlayerState.STOPPED:
-              return IconButton(
-                icon: Icon(Icons.play_arrow),
-                onPressed: () async {
-                  File f = await Provider.of<DownloadManager>(context, listen: false).getDownloadedFile(id);
-                  Provider.of<PlayerManager>(context).play(id, f.path);
-                },
-              );
-            case AudioPlayerState.PLAYING:
-              return Row(children: <Widget>[
-                IconButton(
-                  icon: Icon(Icons.pause),
-                  onPressed: () => Provider.of<PlayerManager>(context).pause(),
-                ),
-                Padding(
-                  padding: EdgeInsets.all(10.0),
-                  child: Row(
-                    children: <Widget>[
-                      Text(_printDuration(playerManager.position)),
-                      if (playerManager.duration?.inSeconds != 0)
-                        Padding(
-                          padding: EdgeInsets.only(left: 5.0, right: 10.0),
-                          child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
-                            value: playerManager.position.inMilliseconds / playerManager.duration.inMilliseconds,
-                          ),
-                        ),
-                      Text(_printDuration(playerManager.duration)),
-                    ],
-                  ),
-                ),
-              ]);
+  Widget _determineControlWidget(Episode episode) {
+    return FutureBuilder(
+      future: _db.exists(episode.id),
+      builder: (context, AsyncSnapshot<bool> snapshot) {
+        if (snapshot.hasData) {
+          if (snapshot.data) {
+            return _playerWidget(episode);
+          }
+          if (_downloads.containsKey(episode.id)) {
+            return _downloadingWidget(episode);
+          } else {
+            return _downloadWidget(episode);
           }
         }
-        return IconButton(
-          icon: Icon(Icons.play_arrow),
-          onPressed: () async {
-            File f = await Provider.of<DownloadManager>(context, listen: false).getDownloadedFile(id);
-            Provider.of<PlayerManager>(context).play(id, f.path);
-          },
-        );
+
+        return Container();
       },
+    );
+  }
+
+  Widget _downloadingWidget(Episode episode) {
+    return StreamBuilder(
+      stream: _downloads[episode.id],
+      builder: (context, AsyncSnapshot snapshot) {
+        if (snapshot.connectionState == ConnectionState.done) {
+          return _playerWidget(episode);
+        }
+
+        if (snapshot.hasData) {
+          return Padding(
+              padding: EdgeInsets.only(left: 10.0),
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                value: snapshot.data,
+              ));
+        }
+
+        return Icon(Icons.access_time);
+      },
+    );
+  }
+
+  Widget _downloadWidget(Episode episode) {
+    return IconButton(
+        icon: Icon(Icons.file_download),
+        onPressed: () async {
+          _downloads[episode.id] = Provider.of<DownloadManager>(context).download(episode.id, episode.audio);
+          setState(() {});
+        });
+  }
+
+  Widget _playerWidget(Episode episode) {
+    return Row(
+      children: <Widget>[
+        Consumer<PlayerManager>(
+          builder: (context, playerManager, _) {
+            if (playerManager.currentId == episode.id) {
+              switch (playerManager.state) {
+                case AudioPlayerState.COMPLETED:
+                case AudioPlayerState.PAUSED:
+                case AudioPlayerState.STOPPED:
+                  return IconButton(
+                    icon: Icon(Icons.play_arrow),
+                    onPressed: () async {
+                      File f = await Provider.of<DownloadManager>(context, listen: false).getDownloadedFile(episode.id);
+                      Provider.of<PlayerManager>(context).play(episode.id, f.path);
+                    },
+                  );
+                case AudioPlayerState.PLAYING:
+                  return Row(children: <Widget>[
+                    IconButton(
+                      icon: Icon(Icons.pause),
+                      onPressed: () => Provider.of<PlayerManager>(context).pause(),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.all(10.0),
+                      child: Row(
+                        children: <Widget>[
+                          Text(_printDuration(playerManager.position)),
+                          if (playerManager.duration?.inSeconds != 0)
+                            Padding(
+                              padding: EdgeInsets.only(left: 5.0, right: 10.0),
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                                value: playerManager.position.inMilliseconds / playerManager.duration.inMilliseconds,
+                              ),
+                            ),
+                          Text(_printDuration(playerManager.duration)),
+                        ],
+                      ),
+                    ),
+                  ]);
+              }
+            }
+
+            return IconButton(
+              icon: Icon(Icons.play_arrow),
+              onPressed: () async {
+                File f = await Provider.of<DownloadManager>(context, listen: false).getDownloadedFile(episode.id);
+                Provider.of<PlayerManager>(context).play(episode.id, f.path);
+              },
+            );
+          },
+        ),
+        IconButton(
+          icon: Icon(Icons.delete),
+          onPressed: () {},
+        )
+      ],
     );
   }
 

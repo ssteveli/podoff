@@ -66,6 +66,10 @@ class PlayerManager with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> jump(Duration position) async {
+    await _player.seek(position);
+  }
+
   Future<void> jumpAhead(Duration duration) async {
     await _player.seek(Duration(milliseconds: duration.inMilliseconds + _position.inMilliseconds));
   }
