@@ -4,9 +4,11 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:podcast/db.dart';
 
 class DownloadManager with ChangeNotifier {
   final Dio dio = new Dio();
+  final Db _db = Db();
 
   Stream<double> download(String id, String url) async* {
     Directory directory = await getTemporaryDirectory();
@@ -31,6 +33,13 @@ class DownloadManager with ChangeNotifier {
 
       yield* _progress.stream;
     }
+  }
+
+  Future<bool> exists(String id) async {
+    Directory directory = await getTemporaryDirectory();
+    File f = File('${directory.path}/$id');
+
+    return await _db.exists(id) && await f.exists();
   }
 
   Future<File> getDownloadedFile(String id) async {

@@ -34,15 +34,17 @@ class _PodcastPageState extends State<PodcastPage> {
         if (snapshot.hasData) {
           return Scaffold(
             appBar: AppBar(
-              title: Text(
-                snapshot.data.title,
-              ),
+              title: Text(snapshot.data.title),
             ),
             body: SingleChildScrollView(
               child: Column(
                 children: <Widget>[
                   Image.network(snapshot.data.image.toString()),
-                  Text(snapshot.data.title),
+                  Text(
+                    snapshot.data.title,
+                    style: Theme.of(context).textTheme.headline,
+                  ),
+                  Divider(),
                   ListView.separated(
                     shrinkWrap: true,
                     separatorBuilder: (BuildContext context, int index) => Divider(),
@@ -74,13 +76,14 @@ class _PodcastPageState extends State<PodcastPage> {
                                     return Row(
                                       children: <Widget>[
                                         CircularProgressIndicator(
+                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
                                           value: snapshot.data,
                                         )
                                       ],
                                     );
                                   }
 
-                                  return Icon(Icons.cloud_download);
+                                  return Icon(Icons.access_time);
                                 },
                               )
                           ],
@@ -116,10 +119,29 @@ class _PodcastPageState extends State<PodcastPage> {
                 },
               );
             case AudioPlayerState.PLAYING:
-              return IconButton(
-                icon: Icon(Icons.pause),
-                onPressed: () => Provider.of<PlayerManager>(context).pause(),
-              );
+              return Row(children: <Widget>[
+                IconButton(
+                  icon: Icon(Icons.pause),
+                  onPressed: () => Provider.of<PlayerManager>(context).pause(),
+                ),
+                Padding(
+                  padding: EdgeInsets.all(10.0),
+                  child: Row(
+                    children: <Widget>[
+                      Text(_printDuration(playerManager.position)),
+                      if (playerManager.duration?.inSeconds != 0)
+                        Padding(
+                          padding: EdgeInsets.only(left: 5.0, right: 10.0),
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                            value: playerManager.position.inMilliseconds / playerManager.duration.inMilliseconds,
+                          ),
+                        ),
+                      Text(_printDuration(playerManager.duration)),
+                    ],
+                  ),
+                ),
+              ]);
           }
         }
         return IconButton(
@@ -131,5 +153,16 @@ class _PodcastPageState extends State<PodcastPage> {
         );
       },
     );
+  }
+
+  String _printDuration(Duration duration) {
+    String twoDigits(int n) {
+      if (n >= 10) return "$n";
+      return "0$n";
+    }
+
+    String twoDigitMinutes = twoDigits(duration.inMinutes);
+    String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
+    return "$twoDigitMinutes:$twoDigitSeconds";
   }
 }

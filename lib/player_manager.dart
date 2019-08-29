@@ -1,23 +1,23 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:podcast/db.dart';
 
 class PlayerManager with ChangeNotifier {
   static AudioPlayer _player = AudioPlayer(mode: PlayerMode.MEDIA_PLAYER);
+  Db _db;
 
   Duration _position;
   Duration _length;
   AudioPlayerState _state;
   String _currentId;
 
-  final Map<String, Duration> _positions = {};
-  Duration get position => _position;
-  Duration get duration => _length;
+  Duration get position => _position ?? Duration.zero;
+  Duration get duration => _length ?? Duration(milliseconds: 1);
   AudioPlayerState get state => _state;
   String get currentId => _currentId;
 
   PlayerManager() {
     _player.onAudioPositionChanged.listen((position) {
-      _positions[_currentId] = position;
       _position = position;
       notifyListeners();
     });
@@ -31,14 +31,22 @@ class PlayerManager with ChangeNotifier {
       _state = state;
       notifyListeners();
     });
+
+    _db = Db(playerManager: this);
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _db?.close();
   }
 
   Future<void> play(String id, String path) async {
     if (_player.state == AudioPlayerState.PLAYING && _currentId == id) return;
+    if (_player.state == AudioPlayerState.PLAYING) await _player.stop();
 
-    await _player.stop();
     _currentId = id;
-    _player.play(path, isLocal: true, position: _positions[id] ?? Duration.zero);
+    _player.play(path, isLocal: true, position: Duration(milliseconds: await _db.currentPosition(id) ?? 0));
 
     notifyListeners();
   }

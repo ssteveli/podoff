@@ -78,46 +78,74 @@ class _EpisodePageState extends State<EpisodePage> {
       Consumer<PlayerManager>(
         builder: (context, playerManager, _) {
           if (playerManager.currentId == episode.id) {
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            return Column(
               children: <Widget>[
-                IconButton(
-                  icon: Icon(Icons.replay_10),
-                  onPressed: () async {
-                    playerManager.jumpBack(Duration(seconds: 10));
-                  },
-                ),
-                FloatingActionButton(
-                  onPressed: () async {
-                    switch (playerManager.state) {
-                      case AudioPlayerState.PLAYING:
-                        await playerManager.pause();
-                        break;
-                      case AudioPlayerState.PAUSED:
-                        await playerManager.resume();
-                        break;
-                      default:
-                        print('playing: ${_file.path}');
-                        await playerManager.play(episode.id, _file.path);
-                        break;
-                    }
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    IconButton(
+                      icon: Icon(
+                        Icons.replay_10,
+                        color: Colors.white,
+                      ),
+                      onPressed: () async {
+                        playerManager.jumpBack(Duration(seconds: 10));
+                      },
+                    ),
+                    FloatingActionButton(
+                      backgroundColor: Colors.orange,
+                      onPressed: () async {
+                        switch (playerManager.state) {
+                          case AudioPlayerState.PLAYING:
+                            await playerManager.pause();
+                            break;
+                          case AudioPlayerState.PAUSED:
+                            await playerManager.resume();
+                            break;
+                          default:
+                            print('playing: ${_file.path}');
+                            await playerManager.play(episode.id, _file.path);
+                            break;
+                        }
 
-                    setState(() {});
-                  },
-                  tooltip: playerManager.state == AudioPlayerState.PLAYING ? 'Pause' : 'Play',
-                  child: Icon(playerManager.state == AudioPlayerState.PLAYING ? Icons.pause : Icons.play_arrow),
+                        setState(() {});
+                      },
+                      tooltip: playerManager.state == AudioPlayerState.PLAYING ? 'Pause' : 'Play',
+                      child: Icon(playerManager.state == AudioPlayerState.PLAYING ? Icons.pause : Icons.play_arrow),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.forward_10),
+                      onPressed: () async {
+                        playerManager.jumpAhead(const Duration(seconds: 10));
+                      },
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.forward_30),
+                      onPressed: () async {
+                        playerManager.jumpAhead(const Duration(seconds: 30));
+                      },
+                    ),
+                  ],
                 ),
-                IconButton(
-                  icon: Icon(Icons.forward_10),
-                  onPressed: () async {
-                    playerManager.jumpAhead(const Duration(seconds: 10));
-                  },
-                ),
-                IconButton(
-                  icon: Icon(Icons.forward_30),
-                  onPressed: () async {
-                    playerManager.jumpAhead(const Duration(seconds: 30));
-                  },
+                Padding(
+                  padding: EdgeInsets.all(10.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: <Widget>[
+                      Text(_printDuration(playerManager.position)),
+                      if (playerManager.duration?.inSeconds != 0)
+                        Expanded(
+                          child: Padding(
+                            padding: EdgeInsets.only(left: 20.0, right: 20.0),
+                            child: LinearProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                              value: playerManager.position.inMilliseconds / playerManager.duration.inMilliseconds,
+                            ),
+                          ),
+                        ),
+                      Text(_printDuration(playerManager.duration)),
+                    ],
+                  ),
                 ),
               ],
             );
@@ -142,20 +170,38 @@ class _EpisodePageState extends State<EpisodePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Player'),
+        title: Text(episode.title),
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           children: <Widget>[
-            Image.network(
-              episode.image,
+            Padding(
+              padding: EdgeInsets.only(top: 10.0),
+              child: Image.network(
+                episode.image,
+              ),
             ),
-            Text(episode.title),
-            _file == null ? _downloading() : _episode(),
+            Text(
+              episode.title,
+              style: Theme.of(context).textTheme.title,
+              textAlign: TextAlign.center,
+            ),
+            Padding(padding: EdgeInsets.only(top: 20.0), child: _file == null ? _downloading() : _episode()),
           ],
         ),
       ),
     );
+  }
+
+  String _printDuration(Duration duration) {
+    String twoDigits(int n) {
+      if (n >= 10) return "$n";
+      return "0$n";
+    }
+
+    String twoDigitMinutes = twoDigits(duration.inMinutes);
+    String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
+    return "$twoDigitMinutes:$twoDigitSeconds";
   }
 }

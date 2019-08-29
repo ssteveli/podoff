@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:podcast/download_manager.dart';
-import 'package:podcast/model/episode.dart';
 import 'package:podcast/player_manager.dart';
 import 'package:podcast/podcast.dart';
 import 'package:provider/provider.dart';
@@ -11,7 +10,7 @@ void main() => runApp(MultiProvider(providers: [
       ),
       ChangeNotifierProvider<PlayerManager>(
         builder: (context) => PlayerManager(),
-      ),
+      )
     ], child: MyApp()));
 
 class MyApp extends StatelessWidget {
