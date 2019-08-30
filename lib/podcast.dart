@@ -63,7 +63,7 @@ class _PodcastPageState extends State<PodcastPage> {
                           ],
                         ),
                         subtitle: Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: <Widget>[
                             Column(
                               children: <Widget>[
@@ -160,44 +160,48 @@ class _PodcastPageState extends State<PodcastPage> {
                     },
                   );
                 case AudioPlayerState.PLAYING:
-                  return Row(children: <Widget>[
-                    IconButton(
-                      icon: Icon(Icons.pause),
-                      onPressed: () => Provider.of<PlayerManager>(context).pause(),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.all(10.0),
-                      child: Row(
-                        children: <Widget>[
-                          Text(_printDuration(playerManager.position)),
-                          if (playerManager.duration?.inSeconds != 0)
-                            Padding(
-                              padding: EdgeInsets.only(left: 5.0, right: 10.0),
-                              child: CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
-                                value: playerManager.position.inMilliseconds / playerManager.duration.inMilliseconds,
-                              ),
-                            ),
-                          Text(_printDuration(playerManager.duration)),
-                        ],
+                  return Column(
+                    children: <Widget>[
+                      IconButton(
+                        icon: Icon(Icons.pause),
+                        onPressed: () => Provider.of<PlayerManager>(context).pause(),
                       ),
-                    ),
-                  ]);
+                      Text(
+                        '${_printDuration(playerManager.position)} / ${_printDuration(playerManager.duration)}',
+                        style: Theme.of(context).textTheme.caption,
+                      ),
+                    ],
+                  );
               }
             }
 
-            return IconButton(
-              icon: Icon(Icons.play_arrow),
-              onPressed: () async {
-                File f = await Provider.of<DownloadManager>(context, listen: false).getDownloadedFile(episode.id);
-                Provider.of<PlayerManager>(context).play(episode.id, f.path);
-              },
+            return Column(
+              children: <Widget>[
+                IconButton(
+                  icon: Icon(Icons.play_arrow),
+                  onPressed: () async {
+                    File f = await Provider.of<DownloadManager>(context, listen: false).getDownloadedFile(episode.id);
+                    Provider.of<PlayerManager>(context).play(episode.id, f.path);
+                  },
+                ),
+                Text(
+                  '${_printDuration(playerManager.position)} / ${_printDuration(playerManager.duration)}',
+                  style: Theme.of(context).textTheme.caption,
+                ),
+              ],
             );
           },
         ),
         IconButton(
           icon: Icon(Icons.delete),
-          onPressed: () {},
+          onPressed: () async {
+            if (Provider.of<PlayerManager>(context).currentId == episode.id) {
+              await Provider.of<PlayerManager>(context).stop();
+            }
+
+            Provider.of<DownloadManager>(context).delete(episode.id);
+            setState(() {});
+          },
         )
       ],
     );

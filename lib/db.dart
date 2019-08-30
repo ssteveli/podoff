@@ -34,6 +34,10 @@ class Db {
     await _db.rawQuery('INSERT OR RELACE INTO Locals (id, path) VALUES (?,?)', [id, path]);
   }
 
+  Future<void> delete(String id) async {
+    await _db.rawQuery('DELETE FROM Locals WHERE id = ?', [id]);
+  }
+
   Future<bool> exists(String id) async {
     return Sqflite.firstIntValue(await _db.rawQuery('SELECT COUNT(*) FROM Locals WHERE id = ?', [id])) >= 1;
   }

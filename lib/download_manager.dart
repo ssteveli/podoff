@@ -42,6 +42,14 @@ class DownloadManager with ChangeNotifier {
     return await _db.exists(id) && await f.exists();
   }
 
+  Future<void> delete(String id) async {
+    Directory directory = await getTemporaryDirectory();
+    File f = File('${directory.path}/$id');
+
+    await _db.delete(id);
+    if (await f.exists()) await f.delete();
+  }
+
   Future<File> getDownloadedFile(String id) async {
     Directory directory = await getTemporaryDirectory();
     File f = File('${directory.path}/$id');
